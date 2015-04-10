@@ -62,14 +62,14 @@ public class ServerThread implements Runnable {
 			
 			double[] key = currentWindow.getKey();
 
-			double[] lowerKey = new double[]{key[0] * 0.98,
+			double[] lowerKey = new double[]{key[0] * 0.97,
 			                                 key[1] - 0.015,
 			                                 key[2] - 0.015,
 			                                 key[3] - 0.015,
 			                                 key[4] - 0.015,
 			                                 key[5] - 0.015};
 
-			double[] upperKey = new double[]{key[0] * 1.02,
+			double[] upperKey = new double[]{key[0] * 1.03,
 			                                 key[1] + 0.015,
 			                                 key[2] + 0.015,
 			                                 key[3] + 0.015,
@@ -85,64 +85,45 @@ public class ServerThread implements Runnable {
 				int compareStart = compareWindow.getStartIndex();
 				int[] compareSegments = compareWindow.getSegments();
 
-				ArrayList<Double> diffList = new ArrayList<Double>();
+				double[] current15 = new double[15];
+				double[] compare15 = new double[15];
 
-				for (int y = 0; y < currentSegments.length; y++) {
-					diffList.add(Math.abs(currentSegments[y] - compareSegments[compareStart + y]) / (double)currentSegments[y]);
+				for (int y = 0; y < 15; y++) {
+					current15[y] = (double)currentSegments[2*y] + (double)currentSegments[(2*y) + 1];
+					compare15[y] = (double)compareSegments[compareStart + (2*y)] + (double)compareSegments[compareStart + (2*y) + 1];
 				}
 
-				Collections.sort(diffList, Collections.reverseOrder());
-
-				double cutoff = diffList.get(3);
-
-				double[] currentInliers = new double[26];
-				double[] compareInliers = new double[26];
-
-				int inlierIndex = 0;
-				int skipCount = 0;
-
-				for (int y = 0; y < currentSegments.length; y++) {
-					if (((Math.abs(currentSegments[y] - compareSegments[compareStart + y]) / (double)currentSegments[y]) < cutoff) || (skipCount == 4)){
-						currentInliers[inlierIndex] = (double)currentSegments[y];
-						compareInliers[inlierIndex] = (double)compareSegments[compareStart + y];
-						inlierIndex++;
-					}
-					else {
-						skipCount++;
-					}
+				double[] currentSnapSamples = new double[9];
+				for (int y = 0; y < 9; y++) {
+					currentSnapSamples[y] = ((3.0*current15[y]) + 
+								                  (-7.0*current15[y+1]) + 
+								                   (1.0*current15[y+2]) + 
+								                   (6.0*current15[y+3]) + 
+								                   (1.0*current15[y+4]) + 
+								                  (-7.0*current15[y+5]) + 
+								                   (3.0*current15[y+6])) / 11.0;
 				}
 
-				double[] currentSnapSamples = new double[20];
-				for (int y = 0; y < 20; y++) {
-					currentSnapSamples[y] = ((3.0*currentInliers[y]) + 
-								                  (-7.0*currentInliers[y+1]) + 
-								                   (1.0*currentInliers[y+2]) + 
-								                   (6.0*currentInliers[y+3]) + 
-								                   (1.0*currentInliers[y+4]) + 
-								                  (-7.0*currentInliers[y+5]) + 
-								                   (3.0*currentInliers[y+6])) / 11.0;
-				}
-
-				double[] compareSnapSamples = new double[20];
-				for (int y = 0; y < 20; y++) {
-					compareSnapSamples[y] = ((3.0*compareInliers[y]) + 
-								                  (-7.0*compareInliers[y+1]) + 
-								                   (1.0*compareInliers[y+2]) + 
-								                   (6.0*compareInliers[y+3]) + 
-								                   (1.0*compareInliers[y+4]) + 
-								                  (-7.0*compareInliers[y+5]) + 
-								                   (3.0*compareInliers[y+6])) / 11.0;
+				double[] compareSnapSamples = new double[9];
+				for (int y = 0; y < 9; y++) {
+					compareSnapSamples[y] = ((3.0*compare15[y]) + 
+								                  (-7.0*compare15[y+1]) + 
+								                   (1.0*compare15[y+2]) + 
+								                   (6.0*compare15[y+3]) + 
+								                   (1.0*compare15[y+4]) + 
+								                  (-7.0*compare15[y+5]) + 
+								                   (3.0*compare15[y+6])) / 11.0;
 				}
 
 				double snapCorrel = correlator.correlation(currentSnapSamples, compareSnapSamples);
 
-				if (snapCorrel < 0.97) {
+				if (snapCorrel < 0.95) {
 					continue;
 				}
 
-				double posCorrel = correlator.correlation(currentInliers, compareInliers);
+				double posCorrel = correlator.correlation(current15, compare15);
 
-				if (posCorrel < 0.98) {
+				if (posCorrel < 0.95) {
 					continue;
 				}
 

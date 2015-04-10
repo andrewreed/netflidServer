@@ -62,14 +62,14 @@ public class ServerThread implements Runnable {
 			
 			double[] key = currentWindow.getKey();
 
-			double[] lowerKey = new double[]{key[0] * 0.94,
+			double[] lowerKey = new double[]{key[0] * 0.98,
 			                                 key[1] - 0.03,
 			                                 key[2] - 0.03,
 			                                 key[3] - 0.03,
 			                                 key[4] - 0.03,
 			                                 key[5] - 0.03};
 
-			double[] upperKey = new double[]{key[0] * 1.06,
+			double[] upperKey = new double[]{key[0] * 1.02,
 			                                 key[1] + 0.03,
 			                                 key[2] + 0.03,
 			                                 key[3] + 0.03,
@@ -85,60 +85,26 @@ public class ServerThread implements Runnable {
 				int compareStart = compareWindow.getStartIndex();
 				int[] compareSegments = compareWindow.getSegments();
 
-				ArrayList<Double> diffList = new ArrayList<Double>();
-
-				for (int y = 0; y < currentSegments.length; y++) {
-					diffList.add(Math.abs(currentSegments[y] - compareSegments[compareStart + y]) / (double)currentSegments[y]);
+				double[] currentSnapSamples = new double[24];
+				for (int y = 0; y < 24; y++) {
+					currentSnapSamples[y] = ((3.0*currentSegments[y]) + 
+								                  (-7.0*currentSegments[y+1]) + 
+								                   (1.0*currentSegments[y+2]) + 
+								                   (6.0*currentSegments[y+3]) + 
+								                   (1.0*currentSegments[y+4]) + 
+								                  (-7.0*currentSegments[y+5]) + 
+								                   (3.0*currentSegments[y+6])) / 11.0;
 				}
 
-				Collections.sort(diffList, Collections.reverseOrder());
-
-				double cutoff = diffList.get(3);
-
-				double[] currentInliers = new double[26];
-				double[] compareInliers = new double[26];
-
-				int inlierIndex = 0;
-				int skipCount = 0;
-
-				for (int y = 0; y < currentSegments.length; y++) {
-					if (((Math.abs(currentSegments[y] - compareSegments[compareStart + y]) / (double)currentSegments[y]) < cutoff) || (skipCount == 4)){
-						currentInliers[inlierIndex] = (double)currentSegments[y];
-						compareInliers[inlierIndex] = (double)compareSegments[compareStart + y];
-						inlierIndex++;
-					}
-					else {
-						skipCount++;
-					}
-				}
-
-				double currentInlierSum = StatUtils.sum(currentInliers);
-				double compareInlierSum = StatUtils.sum(compareInliers);
-
-				if ((Math.abs(currentInlierSum - compareInlierSum) / currentInlierSum) > 0.03) {
-					continue;
-				}
-
-				double[] currentSnapSamples = new double[20];
-				for (int y = 0; y < 20; y++) {
-					currentSnapSamples[y] = ((3.0*currentInliers[y]) + 
-								                  (-7.0*currentInliers[y+1]) + 
-								                   (1.0*currentInliers[y+2]) + 
-								                   (6.0*currentInliers[y+3]) + 
-								                   (1.0*currentInliers[y+4]) + 
-								                  (-7.0*currentInliers[y+5]) + 
-								                   (3.0*currentInliers[y+6])) / 11.0;
-				}
-
-				double[] compareSnapSamples = new double[20];
-				for (int y = 0; y < 20; y++) {
-					compareSnapSamples[y] = ((3.0*compareInliers[y]) + 
-								                  (-7.0*compareInliers[y+1]) + 
-								                   (1.0*compareInliers[y+2]) + 
-								                   (6.0*compareInliers[y+3]) + 
-								                   (1.0*compareInliers[y+4]) + 
-								                  (-7.0*compareInliers[y+5]) + 
-								                   (3.0*compareInliers[y+6])) / 11.0;
+				double[] compareSnapSamples = new double[24];
+				for (int y = 0; y < 24; y++) {
+					compareSnapSamples[y] = ((3.0*compareSegments[compareStart + y]) + 
+								                  (-7.0*compareSegments[compareStart + y + 1]) + 
+								                   (1.0*compareSegments[compareStart + y + 2]) + 
+								                   (6.0*compareSegments[compareStart + y + 3]) + 
+								                   (1.0*compareSegments[compareStart + y + 4]) + 
+								                  (-7.0*compareSegments[compareStart + y + 5]) + 
+								                   (3.0*compareSegments[compareStart + y + 6])) / 11.0;
 				}
 
 				double snapCorrel = correlator.correlation(currentSnapSamples, compareSnapSamples);
@@ -147,7 +113,15 @@ public class ServerThread implements Runnable {
 					continue;
 				}
 
-				double posCorrel = correlator.correlation(currentInliers, compareInliers);
+				double[] currentAsDoubles = new double[30];
+				double[] compareAsDoubles = new double[30];
+
+				for (int y = 0; y < 30; y++) {
+					currentAsDoubles[y] = (double)currentSegments[y];
+					compareAsDoubles[y] = (double)compareSegments[compareStart + y];
+				}
+
+				double posCorrel = correlator.correlation(currentAsDoubles, compareAsDoubles);
 
 				if (posCorrel < 0.95) {
 					continue;
@@ -158,7 +132,6 @@ public class ServerThread implements Runnable {
 				            compareWindow.getTitle() + "\t" + 
 				            compareWindow.getStartIndex() + "\t" +
 				            compareWindow.getKey()[0] / key[0] + "\t" +
-				            compareInlierSum / currentInlierSum + "\t" +
 				            snapCorrel + "\t" +
 				            posCorrel);
 			}
