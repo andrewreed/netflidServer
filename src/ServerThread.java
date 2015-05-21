@@ -140,19 +140,12 @@ public class ServerThread implements Runnable {
 					continue;
 				}
 
-				double posCorrel = correlator.correlation(currentInliers, compareInliers);
-
-				if (posCorrel < 0.98) {
-					continue;
-				}
-
 				out.println(macAddr + "\t" +
 				            currentWindow.getTitle() + "\t" + 
 				            compareWindow.getTitle() + "\t" + 
 				            compareWindow.getStartIndex() + "\t" +
 				            compareWindow.getKey()[0] / key[0] + "\t" +
-				            snapCorrel + "\t" +
-				            posCorrel);
+				            snapCorrel);
 			}
 		}
 		try {
